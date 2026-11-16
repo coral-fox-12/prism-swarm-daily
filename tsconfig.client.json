@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "customConditions": ["browser"],
+    "allowJs": true,
+    "checkJs": false,
+    "types": []
+  },
+  "include": ["src/client", "src/shared"]
+}

@@ -1,0 +1,3 @@
+file 'seg-a.mp4'
+file 'seg-b-scaled.mp4'
+file 'seg-c-trim.mp4'

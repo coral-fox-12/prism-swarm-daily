@@ -1,0 +1,35 @@
+{
+  "name": "prism-swarm-daily",
+  "version": "1.0.0",
+  "description": "PRISM SWARM: Daily \u2014 a bite-sized daily arena game for Reddit (Devvit Web). Port of PRISM SWARM.",
+  "main": "index.js",
+  "scripts": {
+    "dev": "devvit playtest",
+    "build": "vite build",
+    "deploy": "devvit upload",
+    "launch": "devvit publish",
+    "type-check": "tsc --noEmit -p tsconfig.client.json && tsc --noEmit -p tsconfig.server.json",
+    "test": "node --test tests/server-rules.test.mjs",
+    "test:server": "node --test tests/server-rules.test.mjs",
+    "probe": "node scripts/test-server.mjs 8931 > /tmp/prism-test-server.log 2>&1 & echo $! > /tmp/prism-test-server.pid; sleep 1; node scripts/probe.mjs; rc=$?; kill $(cat /tmp/prism-test-server.pid); exit $rc"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@devvit/web": "^0.15.4",
+    "express": "^5.3.0",
+    "hono": "^4.13.19"
+  },
+  "devDependencies": {
+    "@devvit/start": "^0.15.4",
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.6.6",
+    "devvit": "^0.15.4",
+    "playwright-core": "^1.65.1",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8"
+  },
+  "private": true,
+  "type": "module"
+}
