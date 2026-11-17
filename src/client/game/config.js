@@ -34,7 +34,7 @@ export const BULLET = { radius: 5, life: 1.4 };
 
 /** Enemy types: hp, speed, radius, score, colour index and behaviour. */
 export const ENEMIES = {
-  chaser: { hp: 3, speed: 95, radius: 18, score: 50, color: 0, cost: 1, behaviour: 'chase' },
+  chaser: { hp: 3, speed: 120, radius: 18, score: 50, color: 0, cost: 1, behaviour: 'chase' },
   weaver: { hp: 2, speed: 125, radius: 15, score: 80, color: 1, cost: 2, behaviour: 'weave' },
   splitter: { hp: 6, speed: 58, radius: 26, score: 120, color: 2, cost: 3, behaviour: 'split' },
   sniper: { hp: 4, speed: 80, radius: 16, score: 150, color: 3, cost: 3, behaviour: 'snipe' },
@@ -55,12 +55,12 @@ export const BOSS = {
 
 /** Wave budget in cost points, and how fast the queue drains. */
 export const WAVE = {
-  baseBudget: 6,
+  baseBudget: 8,
   budgetPerWave: 4,
-  spawnInterval: 1.15,
+  spawnInterval: 0.65,
   spawnIntervalMin: 0.35,
   clearBonus: 100,
-  betweenWaves: 3.2,
+  betweenWaves: 1.8,
 };
 
 export const PICKUPS = {

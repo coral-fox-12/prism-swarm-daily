@@ -3,7 +3,7 @@
 // so the frame is what a short game really looks like and the same seed always gives the
 // same frame.
 
-import { FIELD, STEP } from './config.js';
+import { FIELD, PLAYER, STEP } from './config.js';
 import { EVENT_OVER } from './world.js';
 import { SCREEN_OVER, SCREEN_PLAY, SCREEN_TITLE } from './render.js';
 
@@ -68,10 +68,34 @@ export function pilotInput(world, skill, target) {
       moveY = (FIELD.height / 2 - player.y) / FIELD.height;
     }
     if (target) {
-      aimX = target.x + target.vx * 0.15;
-      aimY = target.y + target.vy * 0.15;
+      // Lead the target by solving the intercept: the bullet must meet the
+      // enemy at |r + v*t| = bulletSpeed*t (relative velocity includes the
+      // 0.4 * player-velocity the bullets inherit). The old fixed 0.15 s
+      // lead trailed every moving enemy and measured accuracy sat at ~12%.
+      const rx = target.x - player.x;
+      const ry = target.y - player.y;
+      const vx = target.vx - player.vx * 0.4;
+      const vy = target.vy - player.vy * 0.4;
+      const s = PLAYER.bulletSpeed;
+      const a = vx * vx + vy * vy - s * s;
+      const b = 2 * (rx * vx + ry * vy);
+      const c = rx * rx + ry * ry;
+      let lead = Math.min(Math.hypot(rx, ry) / s, 0.9);
+      const disc = b * b - 4 * a * c;
+      if (disc >= 0 && a !== 0) {
+        const root = (-b - Math.sqrt(disc)) / (2 * a);
+        const root2 = (-b + Math.sqrt(disc)) / (2 * a);
+        const best = [root, root2].filter((t) => t > 0).sort((p, q) => p - q)[0];
+        if (best !== undefined) lead = Math.min(best, 0.9);
+      }
+      aimX = target.x + target.vx * lead;
+      aimY = target.y + target.vy * lead;
       wantedColor = target.color;
-      firing = true;
+      // Fire discipline: a matched hit kills most enemies in one shot, so a
+      // full 0.13 s stream wastes ~3 bullets in flight past a dead target —
+      // that, not the aim, was the ~12-18% accuracy. Hold fire while enough
+      // bullets are already on their way (bosses take more).
+      firing = world.bullets.length < (target.isBoss ? 4 : 2);
     }
   }
 

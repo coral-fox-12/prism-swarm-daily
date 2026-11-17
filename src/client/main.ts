@@ -12,6 +12,11 @@
 //
 // ?seed=N fixes the spawn pattern. ?duration=N overrides the daily clock
 // (test hook). ?shot=title|play|boss|over stages that scene for screenshots.
+// ?autoplay=1 steers a live run with the autopilot (demo recording).
+// ?warmup=N pre-plays N seconds with the autopilot, invulnerable, then resets
+// the clock, so a recording starts mid-action instead of on an empty field.
+// ?wave=N starts the run at wave N (boss: ?wave=5). All three are staging
+// hooks for recording; they change nothing for a normal player.
 
 import { BEST_KEY, DAILY, PLAYER, STEP } from './game/config.js';
 import { createRandom } from './game/random.js';
@@ -36,6 +41,9 @@ const params = new URLSearchParams(window.location.search);
 const shot = params.get('shot');
 const seedParam = Number.parseInt(params.get('seed') ?? '', 10);
 const durationParam = Number.parseInt(params.get('duration') ?? '', 10);
+const autoplayParam = params.get('autoplay') === '1';
+const warmupParam = Math.max(0, Number.parseInt(params.get('warmup') ?? '', 10) || 0);
+const waveParam = Number.parseInt(params.get('wave') ?? '', 10);
 
 const canvas = document.getElementById('game') as HTMLCanvasElement;
 const status = document.getElementById('status') as HTMLParagraphElement;
@@ -174,6 +182,22 @@ function startRun(nextMode: 'daily' | 'practice'): void {
   board.classList.remove('show');
   world.reset();
   world.attract = false;
+  if (Number.isInteger(waveParam) && waveParam > 1) {
+    world.state.wave = waveParam - 1;
+    world.nextWave();
+  }
+  if (warmupParam > 0) {
+    // Stage a busy field for demo recording: pre-play with the autopilot
+    // while invulnerable, then reset the clock so the run starts at 0:00
+    // mid-action instead of on an empty field.
+    world.attract = true;
+    for (let i = 0; i < warmupParam * 60; i += 1) {
+      const target = world.nearestEnemy(world.player.x, world.player.y);
+      world.step(STEP, pilotInput(world, 1, target), null);
+    }
+    world.attract = false;
+    world.state.time = 0;
+  }
   screen = SCREEN_PLAY;
   audio.ensure();
   audio.startMusic();
@@ -278,13 +302,33 @@ function runGame(): void {
     input.update();
 
     // Touch play: auto-fire at the nearest enemy, auto-matching its colour.
+    // Aim solves the intercept (see pilotInput) and holds fire while enough
+    // bullets are already on their way — a full stream used to waste ~3
+    // shots in flight past each dead target, which is why touch runs
+    // measured ~12% accuracy.
     if (screen === SCREEN_PLAY && input.touchMode) {
       const target = world.nearestEnemy(world.player.x, world.player.y);
       if (target) {
-        input.aimX = target.x + target.vx * 0.15;
-        input.aimY = target.y + target.vy * 0.15;
+        const rx = target.x - world.player.x;
+        const ry = target.y - world.player.y;
+        const vx = target.vx - world.player.vx * 0.4;
+        const vy = target.vy - world.player.vy * 0.4;
+        const s = PLAYER.bulletSpeed;
+        const a = vx * vx + vy * vy - s * s;
+        const b = 2 * (rx * vx + ry * vy);
+        const c = rx * rx + ry * ry;
+        let lead = Math.min(Math.hypot(rx, ry) / s, 0.9);
+        const disc = b * b - 4 * a * c;
+        if (disc >= 0 && a !== 0) {
+          const root = (-b - Math.sqrt(disc)) / (2 * a);
+          const root2 = (-b + Math.sqrt(disc)) / (2 * a);
+          const best = [root, root2].filter((t) => t > 0).sort((p, q) => p - q)[0];
+          if (best !== undefined) lead = Math.min(best, 0.9);
+        }
+        input.aimX = target.x + target.vx * lead;
+        input.aimY = target.y + target.vy * lead;
         input.aimSeen = true;
-        input.firing = true;
+        input.firing = world.bullets.length < (target.isBoss ? 4 : 2);
         input.autoColor = world.player.colorCd <= 0 && target.color !== world.player.color ? target.color : -1;
       } else {
         input.firing = false;
@@ -294,8 +338,13 @@ function runGame(): void {
       input.autoColor = -1;
     }
 
-    // Virtual joystick visuals.
-    if (input.touch) {
+    // Virtual joystick visuals — only while a touch is actually held AND on
+    // a real touch device (coarse pointer). On desktop the joystick must
+    // never appear: the old recorder ran desktop segments with touch
+    // enabled, so a joystick circle sat stuck on screen through the video.
+    const touchCapable = window.matchMedia('(pointer: coarse)').matches
+      || 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    if (input.touch && touchCapable) {
       const rect = canvas.getBoundingClientRect();
       const scaleX = rect.width / canvas.width;
       const scaleY = rect.height / canvas.height;
@@ -338,7 +387,12 @@ function runGame(): void {
         accumulator += elapsed;
         while (accumulator >= STEP) {
           accumulator -= STEP;
-          const events = world.step(STEP, input, audio);
+          // ?autoplay=1: the autopilot flies the run (demo recording) —
+          // it aims with intercept lead, matches colours and dodges.
+          const stepInput = autoplayParam
+            ? pilotInput(world, 1, world.nearestEnemy(world.player.x, world.player.y))
+            : input;
+          const events = world.step(STEP, stepInput, audio);
           if (events & EVENT_HIT) announce(`Hit! ${world.state.lives} lives left.`);
           if (events & EVENT_WAVE_CLEAR) announce(`Wave ${world.state.wave} clear.`);
           if (events & EVENT_PICKUP) announce('Pickup!');
@@ -394,6 +448,29 @@ function runGame(): void {
   },
   get score() {
     return world.state.score;
+  },
+  get wave() {
+    return world.state.wave;
+  },
+  get kills() {
+    return world.state.kills;
+  },
+  get lives() {
+    return world.state.lives;
+  },
+  get enemies() {
+    return world.enemies.length + world.spawnQueue.length;
+  },
+  get boss() {
+    return world.boss !== null;
+  },
+  get accuracy() {
+    return world.state.shotsFired > 0
+      ? Math.round((world.state.shotsHit / world.state.shotsFired) * 100)
+      : 0;
+  },
+  get time() {
+    return world.state.time;
   },
   get daily() {
     return dailyState;

@@ -126,7 +126,7 @@ export function createWorld(random) {
   world.nextWave = function nextWave() {
     world.state.wave += 1;
     world.spawnQueue = buildQueue(world.state.wave);
-    world.spawnTimer = 0.6;
+    world.spawnTimer = 0.2;
     world.waveTimer = WAVE.betweenWaves;
     world.waveState = 'announce';
   };
@@ -194,6 +194,13 @@ export function createWorld(random) {
       return boss;
     }
     const enemy = makeEnemy(type, x, y);
+    // Enter at speed, already heading for the player: a fresh spawn used to
+    // drift in from the edge at a crawl, leaving the field empty for seconds.
+    const dx = world.player.x - x;
+    const dy = world.player.y - y;
+    const dist = Math.hypot(dx, dy) || 1;
+    enemy.vx = (dx / dist) * enemy.speed;
+    enemy.vy = (dy / dist) * enemy.speed;
     world.enemies.push(enemy);
     return enemy;
   };
@@ -665,7 +672,7 @@ export function createWorld(random) {
         addScore(bonus, FIELD.width / 2, FIELD.height / 2 - 60);
         addFloater(FIELD.width / 2, FIELD.height / 2 - 90, `WAVE ${world.state.wave} CLEAR  +${bonus}`, '#ffb000');
         world.waveState = 'clear';
-        world.waveTimer = 2.2;
+        world.waveTimer = 1.6;
         events |= EVENT_WAVE_CLEAR;
       }
       return events;

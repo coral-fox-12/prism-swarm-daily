@@ -32,6 +32,38 @@ cleanup once killed its own exec session — start the server detached
 - Score popups (floaters) ghosted through the translucent over-screen panel. Fix: `endGame` clears `world.floaters` and `world.flash`.
 - The canvas daily strip sat under the DOM mode buttons. Fix: strip moved to y=512 (the panel ends at 490, the buttons start ~531 logical); the top-3 leaders line was dropped from the title — it lives in the leaderboard panel and on the splash card.
 
+## Video re-record v3 (2026-11-17) — game was genuinely broken, fixed first
+
+- **Root cause of the bad demo run (12% accuracy, 4 kills, dies wave 1):** not
+  the aim — the autopilot/touch auto-aim fired a full 0.13 s stream, and a
+  matched hit kills most enemies in one shot, so ~3 bullets were always in
+  flight past a dead target. Fix: intercept-lead aim (solve
+  |r+v·t| = bulletSpeed·t) + fire discipline (hold fire while ≥2 bullets are
+  already in flight, 4 vs a boss) in `shots.js` pilotInput and the touch
+  auto-aim in `main.ts`. Measured: 30 s pilot run 13% → 46% accuracy,
+  19 → 32 kills, wave 3, 3–4 lives; 60 s run 70% accuracy, wave 5 (boss).
+- **Empty starfield:** wave announce 3.2 s + spawn interval 1.15 s + chasers
+  drifting in at 95 px/s. Now: betweenWaves 1.8 s, spawn interval 0.65 s,
+  baseBudget 8, chaser speed 120, spawns enter at speed toward the player,
+  first spawn 0.2 s after the announce, wave-clear pause 1.6 s.
+- **Joystick on desktop:** the v2 recorder ran desktop contexts with
+  `hasTouch: true` + CDP touch, so the joystick rendered. The game now only
+  shows the joystick while a touch is held AND on a real touch device
+  (`pointer: coarse` / `ontouchstart` / `maxTouchPoints`), and the recorder
+  v3 uses `hasTouch: false` on desktop + `?autoplay=1` instead of touch.
+- **Recording hooks in `main.ts` (staging only, no effect on normal play):**
+  `?autoplay=1` (autopilot flies a live run), `?warmup=N` (pre-play N s with
+  the autopilot, invulnerable, clock reset to 0:00, so footage opens
+  mid-action), `?wave=N` (start at wave N; 5 = boss). `window.__daily` also
+  exposes wave/kills/lives/enemies/boss/accuracy/time for the recorder.
+- **Recorder v3 (`record-video.mjs`):** no captions burned in anywhere;
+  4 segments (splash→daily, mobile touch, live boss, daily loop to time-up)
+  totalling 59.23 s; narration is TTS (default voice, no --voice flag) muxed
+  with ffmpeg, captions live in `video/demo-video.srt` only. Current
+  `video/demo-video.mp4` (59.23 s, 1280×720, H.264+AAC) + `.srt` verified
+  frame-by-frame (frames in `video/frames3/`) and per-window volumedetect.
+  Bad v2 file kept as `video/demo-video-bad-captions.mp4`.
+
 ## Known limitations
 
 - Canvas is a fixed 1280×720 field stretched to the element: on a narrow phone the art squashes horizontally. Touch controls work; a letterboxed layout would be a polish upgrade.
