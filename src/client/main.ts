@@ -221,7 +221,7 @@ async function endGame(reason: 'over' | 'time'): Promise<void> {
     renderBoard(dailyState);
     btnShare.style.display = 'block';
     btnShare.disabled = false;
-    btnShare.textContent = '💬 SHARE MY SCORE ON REDDIT';
+    btnShare.textContent = 'SHARE MY SCORE ON REDDIT';
     refreshDailyButton();
   }
   announce(
@@ -244,7 +244,7 @@ btnShare.addEventListener('click', async () => {
     btnShare.textContent = '✓ SHARED';
   } else {
     showToast(result?.message ?? 'Sharing needs Reddit — your score is still on the board.');
-    btnShare.textContent = '💬 SHARE MY SCORE ON REDDIT';
+    btnShare.textContent = 'SHARE MY SCORE ON REDDIT';
     btnShare.disabled = false;
   }
 });

@@ -663,7 +663,7 @@ export function createWorld(random) {
       } else if (world.enemies.length === 0) {
         const bonus = WAVE.clearBonus * world.state.wave;
         addScore(bonus, FIELD.width / 2, FIELD.height / 2 - 60);
-        addFloater(FIELD.width / 2, FIELD.height / 2 - 90, `WAVE ${world.state.wave} CLEAR  +${bonus}`, '#ffd166');
+        addFloater(FIELD.width / 2, FIELD.height / 2 - 90, `WAVE ${world.state.wave} CLEAR  +${bonus}`, '#ffb000');
         world.waveState = 'clear';
         world.waveTimer = 2.2;
         events |= EVENT_WAVE_CLEAR;

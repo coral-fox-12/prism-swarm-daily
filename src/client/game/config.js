@@ -84,15 +84,15 @@ export const PALETTE = {
   nebulaA: '#131a3a',
   nebulaB: '#2a1040',
   grid: 'rgba(120, 140, 255, 0.05)',
-  text: '#eef2ff',
-  muted: '#93a0c4',
-  panel: 'rgba(10, 14, 34, 0.82)',
-  panelEdge: 'rgba(140, 160, 255, 0.35)',
+  text: '#f2ede3',
+  muted: '#a39e93',
+  panel: 'rgba(11, 11, 14, 0.88)',
+  panelEdge: 'rgba(242, 237, 227, 0.25)',
   danger: '#ff5470',
-  gold: '#ffd166',
+  gold: '#ffb000',
 };
 
-export const FONT = 'system-ui, -apple-system, "Segoe UI", sans-serif';
+export const FONT = "'IBM Plex Mono', ui-monospace, monospace";
 
 /** Where the best score is kept between visits (this browser only). */
 export const BEST_KEY = 'prism-swarm.best';

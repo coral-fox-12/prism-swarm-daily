@@ -212,8 +212,20 @@ export function createRenderer(canvas) {
     c.fill();
   });
 
+  // Chrome type: IBM Plex Mono for HUD and ledger rows; Fraunces for the
+  // big display words (title, wave banners, game-over). Fonts are declared
+  // in game.css; the canvas repaints every frame, so late font loads
+  // self-correct.
   function drawText(text, x, y, size, color, align = 'left', weight = 600) {
-    ctx.font = `${weight} ${size}px ${'system-ui, -apple-system, "Segoe UI", sans-serif'}`;
+    ctx.font = `${weight} ${size}px ${"'IBM Plex Mono', ui-monospace, monospace"}`;
+    ctx.textAlign = align;
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillStyle = color;
+    ctx.fillText(text, x, y);
+  }
+
+  function drawDisplay(text, x, y, size, color, align = 'center') {
+    ctx.font = `900 ${size}px ${'Fraunces, Georgia, serif'}`;
     ctx.textAlign = align;
     ctx.textBaseline = 'alphabetic';
     ctx.fillStyle = color;
@@ -223,11 +235,9 @@ export function createRenderer(canvas) {
   function drawPanel(x, y, width, height) {
     ctx.fillStyle = PALETTE.panel;
     ctx.strokeStyle = PALETTE.panelEdge;
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.roundRect(x, y, width, height, 14);
-    ctx.fill();
-    ctx.stroke();
+    ctx.lineWidth = 1;
+    ctx.fillRect(x, y, width, height);
+    ctx.strokeRect(x + 0.5, y + 0.5, width - 1, height - 1);
   }
 
   function drawHud(world, ui) {
@@ -269,10 +279,10 @@ export function createRenderer(canvas) {
       const width = 220;
       const x = (FIELD.width - width) / 2;
       const y = FIELD.height - 34;
-      drawText(`COMBO x${state.multiplier.toFixed(2)}`, FIELD.width / 2, y - 8, 16, '#ffd166', 'center', 800);
+      drawText(`COMBO x${state.multiplier.toFixed(2)}`, FIELD.width / 2, y - 8, 16, '#ffb000', 'center', 700);
       ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
       ctx.fillRect(x, y, width, 6);
-      ctx.fillStyle = '#ffd166';
+      ctx.fillStyle = '#ffb000';
       ctx.fillRect(x, y, width * Math.max(0, state.comboTimer / 4), 6);
     }
 
@@ -287,9 +297,9 @@ export function createRenderer(canvas) {
       const barY = 92;
       ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
       ctx.fillRect(barX, barY, barWidth, 6);
-      ctx.fillStyle = left <= 30 ? '#ff5470' : '#ffd166';
+      ctx.fillStyle = left <= 30 ? '#ff5470' : '#ffb000';
       ctx.fillRect(barX, barY, barWidth * Math.max(0, left / total), 6);
-      drawText(`⏱ ${minutes}:${String(seconds).padStart(2, '0')}`, FIELD.width / 2, barY + 24, 15, left <= 30 ? '#ff5470' : PALETTE.muted, 'center', 800);
+      drawText(`${minutes}:${String(seconds).padStart(2, '0')}`, FIELD.width / 2, barY + 24, 15, left <= 30 ? '#ff5470' : PALETTE.muted, 'center', 700);
     }
 
     let statusY = FIELD.height - 30;
@@ -320,43 +330,37 @@ export function createRenderer(canvas) {
       const alpha = Math.min(1, world.waveTimer);
       ctx.save();
       ctx.globalAlpha = alpha;
-      drawText(`WAVE ${world.state.wave}`, FIELD.width / 2, FIELD.height / 2 - 40, 64, PALETTE.text, 'center', 900);
+      drawDisplay(`WAVE ${world.state.wave}`, FIELD.width / 2, FIELD.height / 2 - 40, 64, PALETTE.text);
       drawText(world.state.wave % 5 === 0 ? 'SOMETHING HUGE APPROACHES' : 'GET READY', FIELD.width / 2, FIELD.height / 2 + 4, 18, PALETTE.muted, 'center');
       ctx.restore();
     } else if (world.waveState === 'clear') {
       ctx.save();
       ctx.globalAlpha = Math.min(1, world.waveTimer);
-      drawText('WAVE CLEAR', FIELD.width / 2, FIELD.height / 2 - 40, 56, PALETTE.gold, 'center', 900);
+      drawDisplay('WAVE CLEAR', FIELD.width / 2, FIELD.height / 2 - 40, 56, PALETTE.gold);
       ctx.restore();
     }
   }
 
   function drawTitle(world, ui) {
-    ctx.fillStyle = 'rgba(4, 6, 18, 0.72)';
+    ctx.fillStyle = 'rgba(11, 11, 14, 0.78)';
     ctx.fillRect(0, 0, FIELD.width, FIELD.height);
-    const title = 'PRISM SWARM';
-    const letters = ['#ff4d6d', '#38bdf8', '#4ade80', '#e879f9', '#fbbf24'];
-    ctx.font = `900 92px ${'system-ui, -apple-system, "Segoe UI", sans-serif'}`;
-    ctx.textAlign = 'center';
-    let totalWidth = 0;
-    const widths = [...title].map((letter) => {
-      const width = ctx.measureText(letter).width;
-      totalWidth += width;
-      return width;
-    });
-    let x = FIELD.width / 2 - totalWidth / 2;
-    [...title].forEach((letter, index) => {
-      ctx.fillStyle = letter === ' ' ? PALETTE.text : letters[index % letters.length];
-      ctx.textAlign = 'left';
-      ctx.fillText(letter, x, 218);
-      x += widths[index];
-    });
-    drawText('MATCH THE COLOUR. BREAK THE SWARM.', FIELD.width / 2, 258, 20, PALETTE.muted, 'center', 600);
-    drawText('A chromatic arena survival — one ship, five colours, endless swarm.', FIELD.width / 2, 288, 15, PALETTE.muted, 'center');
+    // One name, one colour. The five bullet colours live in the key row
+    // below — they are the mechanic, not the title.
+    drawDisplay('PRISM SWARM', FIELD.width / 2, 200, 88, PALETTE.text);
+    const keyColors = ['#ff4d6d', '#38bdf8', '#4ade80', '#e879f9', '#fbbf24'];
+    const keyWidth = keyColors.length * 16 + (keyColors.length - 1) * 8;
+    let kx = FIELD.width / 2 - keyWidth / 2;
+    for (const color of keyColors) {
+      ctx.fillStyle = color;
+      ctx.fillRect(kx, 226, 16, 16);
+      kx += 24;
+    }
+    drawText('MATCH THE COLOUR. BREAK THE SWARM.', FIELD.width / 2, 274, 20, PALETTE.text, 'center', 700);
+    drawText('A chromatic arena survival — one ship, five colours, endless swarm.', FIELD.width / 2, 302, 15, PALETTE.muted, 'center');
 
     const panelX = (FIELD.width - 640) / 2;
     drawPanel(panelX, 322, 640, 168);
-    drawText('HOW TO PLAY', FIELD.width / 2, 352, 15, PALETTE.gold, 'center', 800);
+    drawText('HOW TO PLAY', FIELD.width / 2, 352, 15, PALETTE.gold, 'center', 700);
     const rows = [
       ['MOVE', 'WASD / Arrow keys'],
       ['AIM + FIRE', 'Mouse — hold to fire'],
@@ -374,11 +378,11 @@ export function createRenderer(canvas) {
     // The DOM mode buttons replace click-to-start, so the canvas line would
     // only duplicate them — and the buttons sit low, so the strip and the
     // leaders move up clear of them (they used to hide underneath).
-    if (blink && !ui.daily) drawText('CLICK OR PRESS ENTER TO START', FIELD.width / 2, 552, 22, '#ffffff', 'center', 800);
+    if (blink && !ui.daily) drawText('CLICK OR PRESS ENTER TO START', FIELD.width / 2, 552, 22, PALETTE.text, 'center', 700);
     if (ui.best > 0 && !ui.daily) drawText(`BEST SCORE  ${ui.best.toLocaleString('en-US')}`, FIELD.width / 2, 592, 16, PALETTE.gold, 'center', 700);
     if (ui.daily) {
       const daily = ui.daily;
-      const strip = `TODAY ${daily.date}  ·  ${daily.attemptsLeft} ${daily.attemptsLeft === 1 ? 'ATTEMPT' : 'ATTEMPTS'} LEFT  ·  BEST TODAY ${daily.bestToday.toLocaleString('en-US')}${daily.streak > 0 ? `  ·  🔥 ${daily.streak}-DAY STREAK` : ''}`;
+      const strip = `TODAY ${daily.date}  ·  ${daily.attemptsLeft} ${daily.attemptsLeft === 1 ? 'ATTEMPT' : 'ATTEMPTS'} LEFT  ·  BEST TODAY ${daily.bestToday.toLocaleString('en-US')}${daily.streak > 0 ? `  ·  ${daily.streak}-DAY STREAK` : ''}`;
       // The panel ends at 490 and the DOM buttons start around 531 (logical);
       // 512 is the clear band between them. The top-3 leaders live in the
       // leaderboard panel and on the splash card instead of crowding this band.
@@ -389,16 +393,16 @@ export function createRenderer(canvas) {
   }
 
   function drawPaused() {
-    ctx.fillStyle = 'rgba(4, 6, 18, 0.66)';
+    ctx.fillStyle = 'rgba(11, 11, 14, 0.66)';
     ctx.fillRect(0, 0, FIELD.width, FIELD.height);
-    drawText('PAUSED', FIELD.width / 2, FIELD.height / 2 - 10, 56, PALETTE.text, 'center', 900);
+    drawDisplay('PAUSED', FIELD.width / 2, FIELD.height / 2 - 10, 56, PALETTE.text);
     drawText('Press P or ESC to resume — R to restart', FIELD.width / 2, FIELD.height / 2 + 34, 16, PALETTE.muted, 'center');
   }
 
   function drawOver(world, ui) {
-    ctx.fillStyle = 'rgba(10, 4, 10, 0.72)';
+    ctx.fillStyle = 'rgba(11, 11, 14, 0.78)';
     ctx.fillRect(0, 0, FIELD.width, FIELD.height);
-    drawText('SIGNAL LOST', FIELD.width / 2, 168, 64, '#ff5470', 'center', 900);
+    drawDisplay('SIGNAL LOST', FIELD.width / 2, 168, 64, PALETTE.gold);
     drawText('The swarm overran your ship.', FIELD.width / 2, 206, 17, PALETTE.muted, 'center');
     const panelX = (FIELD.width - 520) / 2;
     const extraRows = ui.dailyResult ? 2 : 0;
@@ -406,7 +410,7 @@ export function createRenderer(canvas) {
     const state = world.state;
     const accuracy = state.shotsFired > 0 ? Math.round((state.shotsHit / state.shotsFired) * 100) : 0;
     drawText('FINAL SCORE', FIELD.width / 2, 286, 14, PALETTE.muted, 'center', 700);
-    drawText(state.score.toLocaleString('en-US'), FIELD.width / 2, 334, 48, '#ffffff', 'center', 900);
+    drawDisplay(state.score.toLocaleString('en-US'), FIELD.width / 2, 334, 48, PALETTE.text);
     const rows = [
       ['WAVE REACHED', String(state.wave)],
       ['ENEMIES DESTROYED', String(state.kills)],
@@ -416,7 +420,7 @@ export function createRenderer(canvas) {
     ];
     if (ui.dailyResult) {
       rows.push(['TODAY’S RANK', ui.dailyResult.rank > 0 ? `#${ui.dailyResult.rank}` : '—']);
-      rows.push(['STREAK', ui.dailyResult.streak > 0 ? `${ui.dailyResult.streak} day${ui.dailyResult.streak === 1 ? '' : 's'} 🔥` : '—']);
+      rows.push(['STREAK', ui.dailyResult.streak > 0 ? `${ui.dailyResult.streak} day${ui.dailyResult.streak === 1 ? '' : 's'}` : '—']);
     }
     rows.forEach(([key, value], index) => {
       const y = 372 + index * 24;
@@ -424,7 +428,7 @@ export function createRenderer(canvas) {
       drawText(value, panelX + 480, y, 14, PALETTE.text, 'right', 700);
     });
     const blink = Math.floor(world.state.time * 2) % 2 === 0;
-    if (blink) drawText('PRESS R OR CLICK TO PLAY AGAIN', FIELD.width / 2, 552 + extraRows * 24, 20, '#ffffff', 'center', 800);
+    if (blink) drawText('PRESS R OR CLICK TO PLAY AGAIN', FIELD.width / 2, 552 + extraRows * 24, 20, PALETTE.text, 'center', 700);
   }
 
   const renderer = {
@@ -466,7 +470,7 @@ export function createRenderer(canvas) {
         ctx.fill();
         ctx.shadowBlur = 0;
         ctx.fillStyle = '#0a0618';
-        ctx.font = '900 13px system-ui, sans-serif';
+        ctx.font = '700 13px "IBM Plex Mono", monospace';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(pickup.kind === 'heart' ? '+' : pickup.kind[0].toUpperCase(), 0, 1);

@@ -22,7 +22,7 @@ void fetchDaily().then((daily) => {
   if (!daily) return;
   if (todayEl) todayEl.textContent = daily.date;
   if (bestEl) bestEl.textContent = daily.bestToday.toLocaleString('en-US');
-  if (streakEl) streakEl.textContent = daily.streak > 0 ? `🔥 ${daily.streak}` : '—';
+  if (streakEl) streakEl.textContent = daily.streak > 0 ? String(daily.streak) : '—';
 });
 
 playButton?.addEventListener('click', (event) => {
